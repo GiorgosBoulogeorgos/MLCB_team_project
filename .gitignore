@@ -1,0 +1,17 @@
+# Data — lives on Drive, never in git
+data/
+*.h5ad
+*.mtx
+*.mtx.gz
+*.csv.gz
+*.soft.gz
+*.tar
+
+# Models
+models/*.pkl
+
+# Python noise
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
