@@ -235,3 +235,58 @@ def deg_sanity_check(adata, cluster_col='cell_type_fine',
         results[(cluster, sex)] = df.head(n_top)
 
     return results
+
+
+def compute_cc_label(broad, fine, split=('ExN10_L46',)):
+    """Hybrid cell-cell-communication label from broad + fine annotations.
+
+    Start from the broad classes, then promote each fine cluster in `split`
+    to its own communication node so the hypothesis pair is resolvable. When a
+    fine cluster is split out of its broad parent, the parent's remaining
+    members are relabelled '<parent>_other' so the two stay distinct nodes.
+
+    For this dataset Mic == Mic1 (microglia have a single fine cluster), so
+    only the receiver ExN10_L46 needs splitting; the rest of ExN becomes
+    'ExN_other'. 'Mix' is left untouched here (drop it downstream).
+
+    Parameters
+    ----------
+    broad, fine : pd.Series
+        Aligned per-nucleus broad and fine labels (e.g. adata.obs columns).
+    split : tuple of str
+        Fine clusters to promote to their own node. Assumed non-overlapping
+        (each fine cluster sits under a single broad parent).
+
+    Returns
+    -------
+    pd.Series
+        The hybrid label, aligned to `broad`'s index.
+    """
+    broad = broad.astype(str)
+    fine = fine.astype(str)
+    label = broad.copy()
+    for fine_cl in split:
+        is_cl = (fine == fine_cl)
+        if not is_cl.any():
+            print(f"compute_cc_label: WARNING fine cluster '{fine_cl}' not found; skipping")
+            continue
+        for parent in broad[is_cl].unique():
+            label[(broad == parent) & ~is_cl] = f'{parent}_other'
+        label[is_cl] = fine_cl
+    return label
+
+
+def make_cc_label(adata, split=('ExN10_L46',), drop=('Mix',),
+                  broad_col='cell_type_broad', fine_col='cell_type_fine',
+                  out_col='cc_label'):
+    """Attach the hybrid CCC label to a copy of `adata`, dropping `drop` nodes.
+
+    Wraps compute_cc_label: builds the label, removes unwanted classes (the
+    authors' mixed-profile 'Mix'), and returns a NEW AnnData with the label in
+    .obs[out_col] as a category. .X and .layers are preserved for the LIANA run.
+    """
+    label = compute_cc_label(adata.obs[broad_col], adata.obs[fine_col], split=split)
+    keep = ~label.isin(drop)
+    out = adata[keep.values].copy()
+    out.obs[out_col] = pd.Categorical(label[keep].values)
+    return out
