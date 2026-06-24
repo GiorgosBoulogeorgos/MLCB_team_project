@@ -124,6 +124,7 @@ class RepeatedNestedCV:
         estimators: dict,
         param_spaces: Optional[dict] = None,
         feature_selector=None,
+        prefilter=None,
         n_rounds: int = 10,
         n_outer: int = 5,
         n_inner: int = 3,
@@ -157,6 +158,7 @@ class RepeatedNestedCV:
         self.estimators = estimators
         self.param_spaces = param_spaces or {}
         self.feature_selector = feature_selector
+        self.prefilter = prefilter
         self.n_rounds = n_rounds
         self.n_outer = n_outer
         self.n_inner = n_inner
@@ -394,15 +396,19 @@ class RepeatedNestedCV:
 
     def _prepend_selector(self, steps):
         """
-        Prepend a fresh feature-selector step to a list of (name, est)
-        pipeline steps, if a feature_selector was configured.
+        Prepend the feature-engineering steps to a list of (name, est)
+        pipeline steps: an optional variance pre-filter first, then the
+        feature selector. Each is deepcopied so every pipeline gets its own
+        unfitted instance (critical inside deepcopy CV).
 
-        A deepcopy guarantees each pipeline gets an unfitted selector with
-        its own state (critical inside parallel/deepcopy CV).
+        Final layout: [prefilter?] -> [selector?] -> preprocessor -> classifier
         """
+        head = []
+        if self.prefilter is not None:
+            head.append(('prefilter', deepcopy(self.prefilter)))
         if self.feature_selector is not None:
-            return [('selector', deepcopy(self.feature_selector))] + steps
-        return steps
+            head.append(('selector', deepcopy(self.feature_selector)))
+        return head + steps
 
     def _build_pipeline(self, algo_name, best_params):
         """

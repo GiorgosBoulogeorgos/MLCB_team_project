@@ -146,3 +146,60 @@ class MRMRSelector(BaseEstimator, TransformerMixin):
     def get_support(self) -> list[str]:
         """Return the names of selected features, in mRMR rank order."""
         return list(self.selected_features_)
+
+
+# --- Variance pre-filter ------------------------------------------------
+# With tens of thousands of pseudobulk genes, running mRMR (and especially
+# mutual-information relevance) over the full feature set is intractable
+# inside nested CV. A variance pre-filter keeps the top-N most variable
+# features before mRMR sees them. Fitted on the training split only (it
+# lives in the pipeline ahead of the selector), so it never looks at
+# held-out data -- the same leakage discipline as every other fitted step.
+
+class VarianceTopK(BaseEstimator, TransformerMixin):
+    """
+    Keep the top-N features by training-set variance.
+
+    A fast, unsupervised first-stage filter that shrinks a very wide
+    feature matrix to a tractable width before mRMR. Unsupervised (variance
+    only, never the label), so it is a mild operation; still fitted in-fold
+    for strict leakage safety.
+
+    Parameters
+    ----------
+    n_top : int, default 1000
+        Number of highest-variance features to keep. If the input has fewer
+        columns, all are kept.
+
+    Attributes (after fit)
+    ----------------------
+    selected_features_ : list[str]
+        Names of the retained columns (when fitted on a DataFrame).
+    """
+
+    def __init__(self, n_top: int = 1000):
+        self.n_top = n_top
+
+    def fit(self, X, y=None):
+        if isinstance(X, pd.DataFrame):
+            self.feature_names_in_ = list(X.columns)
+            variances = X.var(axis=0, ddof=1).values
+        else:
+            self.feature_names_in_ = [f'f{i}' for i in range(X.shape[1])]
+            variances = np.var(np.asarray(X), axis=0, ddof=1)
+
+        n_keep = min(self.n_top, len(self.feature_names_in_))
+        # indices of the n_keep largest variances
+        top_idx = np.argsort(variances)[::-1][:n_keep]
+        top_idx = np.sort(top_idx)  # keep original column order
+        self.support_idx_ = top_idx
+        self.selected_features_ = [self.feature_names_in_[i] for i in top_idx]
+        return self
+
+    def transform(self, X):
+        if isinstance(X, pd.DataFrame):
+            return X[self.selected_features_]
+        return np.asarray(X)[:, self.support_idx_]
+
+    def get_support(self) -> list[str]:
+        return list(self.selected_features_)
