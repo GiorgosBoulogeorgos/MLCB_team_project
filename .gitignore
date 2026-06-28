@@ -16,5 +16,10 @@ __pycache__/
 .ipynb_checkpoints/
 .env
 
-# Docs
+# macOS noise
+.DS_Store
+
+# Docs (handoff notes live on Drive) — but keep the project report dir
 MLCB*
+!report/
+!report/**
