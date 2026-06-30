@@ -186,7 +186,7 @@ runtime timeout never costs more than one step.
 
 % ---- Phase A ----
 \node[box=phaseA, right=of geo] (a1)
-  {\textbf{A. Reproduction}\\[1pt]\scriptsize QC, CP1e4+log1p,\\merge M24,
+  {\textbf{A. Reproduction}\\[1pt]\scriptsize QC, CP10$^4$+log1p,\\merge M24,
    attach labels};
 \node[box=phaseA, right=of a1] (a2)
   {\scriptsize DEG sanity check\\Mic1 (F), ExN10\_L46 (M)};
@@ -200,7 +200,7 @@ runtime timeout never costs more than one step.
   {\scriptsize non-negative CP\\(PARAFAC), \textbf{rank 5}\\$\Rightarrow$ 5 programs};
 
 % ---- Phase C ----
-\node[box=phaseC, below=12mm of b1] (c1)
+\node[box=phaseC, below=22mm of b1] (c1)
   {\textbf{C. Machine learning}\\[1pt]\scriptsize per-celltype\\pseudobulk};
 \node[box=phaseC, right=of c1] (c2)
   {\scriptsize 3 feature sets:\\expr / comm / combined};
@@ -214,7 +214,7 @@ runtime timeout never costs more than one step.
    per-sex value-add\;$\cdot$\;Factor 4 = microglia$\rightarrow$ExN10\_L46};
 
 % ---- data artefacts under B ----
-\node[data, below=7mm of b3, yshift=-1mm] (bf)
+\node[data, below=6mm of b3] (bf)
   {phaseB\_donor\\\_factors (71$\times$5)};
 
 % arrows
@@ -301,7 +301,7 @@ a single fine cluster), so there is nothing to split on the sender side. But
 therefore split \emph{only} \code{ExN10\_L46} out of \code{ExN}
 (remainder~$=$~\code{ExN\_other}) and keep everything else broad. Final nodes:
 \code{Ast, End, ExN10\_L46, ExN\_other, InN, Mic, OPC, Oli} (\code{Mix}
-dropped $\rightarrow$ 156{,}911 nuclei). With \code{min\_cells=10} per donor,
+dropped, leaving 156{,}911 of the 160{,}711 nuclei). With \code{min\_cells=10} per donor,
 focal-edge missingness is balanced across diagnosis (Mann--Whitney $p=0.19$), so
 it does not leak the label; donors below threshold in a cell type are
 \emph{masked} (not imputed).
@@ -316,10 +316,44 @@ $-\log_{10}(x+\varepsilon)$, which both flips orientation (large\,$=$\,strong)
 and reshapes it; an early bug that omitted this transform left the in-fold
 factors inverted and collapsed two linear models to chance, and was fixed once
 diagnosed. A non-negative CP (PARAFAC) decomposition~\cite{tensorc2c,tensorly}
-with elbow-selected \textbf{rank~5} yields five \emph{communication programs}; a
+with \textbf{rank~5} (justified below) yields
+five \emph{communication programs}; a
 donor's \emph{loading} on a program measures how active it is in that donor.
 Each factor's sender, receiver and L--R loadings give its biological
 interpretation.
+
+\paragraph{Why rank~5.} Figure~\ref{fig:elbow} plots the reconstruction error as
+the rank grows. As is typical for CP decompositions of noisy single-cell
+communication tensors, the error declines \emph{smoothly}, with diminishing
+returns rather than a sharp elbow: the first five components capture about
+two-thirds of the total error reduction available over ranks~1--8
+($0.66\!\rightarrow\!0.58$ by rank~5 vs.\ a further $0.58\!\rightarrow\!0.54$
+across ranks~6--8), and each component past five lowers the error by
+progressively less while adding another program to interpret. We therefore do
+not over-read a kink that is not there; rank~5 is a deliberate \emph{parsimony /
+interpretability} choice---small enough that each program admits a clear
+sender\,$\rightarrow$\,receiver reading, yet large enough to resolve the dominant
+batch/cohort structure (Factors~2/3/5) from the diagnosis-leaning biology
+(\factorfour), matching the low single-digit ranks used in Tensor-cell2cell
+workflows. The choice is validated \emph{post hoc}: the five programs cleanly
+separate batch from biology (Table~\ref{tab:factors}), and the in-fold refit
+re-estimates a rank-5 decomposition inside every training fold yet recovers the
+same \factorfour\ ($|r|\approx0.95$; median $0.97$ across the five factors vs.\
+the frozen all-donor factors).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/phaseB_reconstruction_error.png}
+\caption{Tensor reconstruction error vs.\ CP (PARAFAC) rank. Normalised
+Frobenius reconstruction error over the observed (unmasked) entries of the
+$71\times1650\times8\times8$ communication tensor, for non-negative
+decompositions of rank $1$--$8$ (single seed, \code{random\_state=0}, matching
+the in-fold projector). The error decreases \emph{smoothly} with diminishing
+returns rather than at a sharp elbow; rank~5 (dashed line) captures roughly
+two-thirds of the reduction available across this range and was fixed for
+parsimony and interpretability (see text).}
+\label{fig:elbow}
+\end{figure}
 
 \begin{table}[h]
 \centering
@@ -472,7 +506,7 @@ mildly leak-inflated.
 
 \subsection{Step 4 — interpretation and the directed hypothesis test}
 
-We probe \factorfour\ from three angles with SHAP (signed log-odds
+We probe \factorfour\ from three angles with SHAP~\cite{shap} (signed log-odds
 contributions; colour\,$=$\,feature value, red high / blue low).
 
 \paragraph{(i) Standalone direction and sex.} \factorfour\ is higher in MDD
@@ -534,8 +568,9 @@ removed.
 \end{subfigure}\hfill
 \begin{subfigure}{0.49\textwidth}
   \includegraphics[width=\linewidth]{figures/step4_shap_beeswarm_infold_overall.png}
-  \caption{In-fold leakage-safe factors on held-out donors: \factorfour\
-  becomes the \#1 communication factor.}
+  \caption{In-fold leakage-safe factors on held-out donors, pooled across the
+  3 CV rounds ($71\times3=213$ held-out predictions): \factorfour\ becomes the
+  \#1 communication factor.}
   \label{fig:beeswarm-infold}
 \end{subfigure}
 \caption{The two extended SHAP views. Left: when factors and genes compete, the
@@ -570,7 +605,11 @@ communication is \emph{derived from} expression, and a rank-5 program is a
 compressed, lossy summary of the same microglial transcriptional state that the
 raw \code{Mic\_\_*} genes encode at full resolution. At $n=71$ the compression
 buys interpretability, not discriminative power. The signal is \emph{real but
-not independent}.
+not independent}. Note the comparison is, if anything, \emph{conservative}: the
+expression baseline already includes per-cell-type pseudobulk for
+\code{ExN10\_L46}---the very receiver of the hypothesis axis---so the factors
+compete against a baseline deliberately favourable to the hypothesis and still
+add nothing.
 
 % ===========================================================================
 \section{Limitations}
