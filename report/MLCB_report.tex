@@ -36,7 +36,8 @@ Disorder}\\[4pt]
 \large Testing a microglia\,$\rightarrow$\,neuron communication axis from
 single-nucleus RNA-seq of the human prefrontal cortex}
 
-\author{MLCB Team Project \\ \small Re-analysis of Maitra \textit{et al.}
+\author{Giorgos Boulogeorgos, Andreas Mici \\[3pt]
+\small MLCB Team Project --- Re-analysis of Maitra \textit{et al.}
 (2023), \textit{Nature Communications} \textbf{14}, 2912}
 \date{June 2026}
 
@@ -160,10 +161,10 @@ biology. This single fact reshaped the evaluation design (Section~\ref{sec:phase
 \section{Pipeline overview}
 % ===========================================================================
 
-The analysis proceeds in four phases (Figure~\ref{fig:pipeline}): reproduction
-(A), cell--cell communication inference (B), machine learning (C), and an
-interpretability layer (Step~4). Each expensive step is checkpointed so a
-runtime timeout never costs more than one step.
+The analysis proceeds in three phases (Figure~\ref{fig:pipeline})---reproduction
+(A), cell--cell communication inference (B) and machine learning (C)---followed
+by an interpretability and hypothesis-testing layer (Step~4). Each expensive step
+is checkpointed so a runtime timeout never costs more than one step.
 
 \begin{figure}[h]
 \centering
@@ -255,7 +256,8 @@ and the authors' annotations are validated). Phase~A (i)~streams the $\sim$1.1\,
 matrix into an \code{AnnData} object, parses the cell string into
 donor/barcode/broad/fine, merges \code{M24\_2}$\rightarrow$\code{M24}, and
 attaches sex and diagnosis; (ii)~normalises \code{.X} to counts-per-$10^4$ then
-\code{log1p}, preserving raw counts in \code{.layers['counts']} (pseudobulk in
+\code{log1p} (Scanpy~\cite{scanpy}), preserving raw counts in
+\code{.layers['counts']} (pseudobulk in
 Phase~C needs raw); and (iii)~runs a nucleus-level Wilcoxon DEG sanity check
 (MDD vs.\ Control, within sex) on \code{Mic1} and \code{ExN10\_L46}. Both show
 strong signal---\code{Mic1} (female) synaptic/adhesion genes up, \code{ExN10\_L46}
@@ -432,9 +434,10 @@ is \factorfour's importance \emph{shared across sexes}?
 
 \paragraph{Model selection and validation.} We use \emph{repeated nested
 cross-validation}: 3 rounds $\times$ 5 outer folds $\times$ 3 inner folds, with
-20 Optuna trials per inner search, evaluating five estimators---logistic
-regression (LR), Gaussian naive Bayes (GNB), linear discriminant analysis (LDA),
-random forest (RF), and XGBoost~\cite{xgboost}. Bootstrap 95\% confidence
+20 Optuna~\cite{optuna} trials per inner search, evaluating five
+estimators---logistic regression (LR), Gaussian naive Bayes (GNB), linear
+discriminant analysis (LDA) and random forest (RF) from
+scikit-learn~\cite{sklearn}, plus XGBoost~\cite{xgboost}. Bootstrap 95\% confidence
 intervals are reported. Feature pipelines are fit \emph{inside} the training
 fold: a variance top-1000 prefilter (\code{VarianceTopK}) followed by mRMR
 selection of $k=15$ features (\code{MRMRSelector}, relevance\,$=$\,mutual
