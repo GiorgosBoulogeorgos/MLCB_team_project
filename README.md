@@ -9,8 +9,11 @@ communication is modelled explicitly.
 
 The full write-up — methods, results, figures and honest conclusion — is in
 [`report/MLCB_report.pdf`](report/MLCB_report.pdf) (source:
-[`report/MLCB_report.tex`](report/MLCB_report.tex)). Authors: Giorgos
-Boulogeorgos, Andreas Mici.
+[`report/MLCB_report.tex`](report/MLCB_report.tex)).
+
+**Authors:** Giorgos Boulogeorgos, Andreas Mici — National and Kapodistrian
+University of Athens (NKUA), MSc in Data Science and Information Technologies.
+**Supervisor:** Prof. E. Manolakos.
 
 **Headline result.** A single data-driven communication program (*Factor 4*, an
 endothelial+microglia → `ExN10_L46` axis) is the dominant, cohort-clean,
