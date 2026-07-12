@@ -167,9 +167,9 @@ from functions import build_condition_map, load_dataset
 ```
 
 > The boot cells clone `github.com/andreas824/MLCB_team_project` — the team copy
-> used while developing on Colab. This repository
-> (`github.com/GiorgosBoulogeorgos/MLCB_team_project`) is the one cited in the
-> report and is the reference copy for the submission.
+> used while developing on Colab. The reference copy for the submission is
+> `gitlab.com/boulgeo/MLCB_team_project` (the link cited in the report), mirrored
+> at `github.com/GiorgosBoulogeorgos/MLCB_team_project`.
 
 ### Phase B + C + Step 4 — local (off-Colab)
 
