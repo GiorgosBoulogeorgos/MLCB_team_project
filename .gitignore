@@ -29,3 +29,4 @@ report/*.aux
 report/*.log
 report/*.out
 report/*.toc
+report/make_docx.py
