@@ -23,3 +23,9 @@ __pycache__/
 MLCB*
 !report/
 !report/**
+
+# LaTeX build artefacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc

@@ -74,7 +74,10 @@ representation does not add value over expression for donor-level
 classification.
 \end{abstract}
 
-\tableofcontents
+\medskip
+\noindent\textbf{Keywords:} major depressive disorder; single-nucleus RNA-seq;
+cell--cell communication; ligand--receptor inference; tensor decomposition;
+interpretable machine learning; microglia; prefrontal cortex.
 \bigskip
 
 % ===========================================================================
@@ -110,8 +113,10 @@ interpretable machine-learning comparison of expression vs.\ communication
 features at the donor level.
 
 % ===========================================================================
-\section{Data}
+\section{Materials and Methods}
 % ===========================================================================
+
+\subsection{Data}
 
 We re-use the combined count matrix released by Maitra \textit{et al.}, which
 merges the female cohort (GSE213982) and the male cohort (GSE144136) into a
@@ -158,13 +163,14 @@ across-batch split, so a failure to generalise could be batch rather than
 biology. This single fact reshaped the evaluation design (Section~\ref{sec:phaseC}).
 
 % ===========================================================================
-\section{Pipeline overview}
+\subsection{Pipeline overview}
 % ===========================================================================
 
 The analysis proceeds in three phases (Figure~\ref{fig:pipeline})---reproduction
 (A), cell--cell communication inference (B) and machine learning (C)---followed
-by an interpretability and hypothesis-testing layer (Step~4). Each expensive step
-is checkpointed so a runtime timeout never costs more than one step.
+by an interpretability and hypothesis-testing layer (Phase~D, referred to as
+Step~4 in the code). Each expensive step is checkpointed so a runtime timeout
+never costs more than one step.
 
 \begin{figure}[h]
 \centering
@@ -247,7 +253,7 @@ hypothesis test on the microglia\,$\rightarrow$\,\code{ExN10\_L46} program.}
 \end{figure}
 
 % ===========================================================================
-\section{Phase A — Reproduction}
+\subsection{Phase A --- Reproduction}
 % ===========================================================================
 
 Because the authors already performed QC \emph{and} annotation, Phase~A is
@@ -275,7 +281,7 @@ nucleus-level tests. The Phase~A checkpoint
 \code{donor\_id, cell\_type\_broad, cell\_type\_fine, sex, condition, dataset}.
 
 % ===========================================================================
-\section{Phase B — Cell--cell communication}
+\subsection{Phase B --- Cell--cell communication}
 % ===========================================================================
 
 \paragraph{Three deliberate methodology changes} (agreed before building) moved
@@ -402,7 +408,7 @@ microglia. Selecting \factorfour\ by \emph{biology} (not by $p$-value) keeps
 this a legitimate \emph{directed} test.
 
 % ===========================================================================
-\section{Phase C — Machine learning}
+\subsection{Phase C --- Machine learning}
 \label{sec:phaseC}
 % ===========================================================================
 
@@ -455,7 +461,7 @@ the headline numbers we \emph{re-fit the tensor inside each outer-train fold}
 (\code{TensorFactorProjector}: non-negative PARAFAC on train donors, then NNLS
 projection of held-out donors onto the fixed factors). Because non-negative CP
 has no sign ambiguity (only permutation), in-fold components are matched to the
-canonical Factor~1\ldots5 by $|{\rm corr}|$ Hungarian assignment.
+canonical Factor~1\ldots5 by $|\mathrm{corr}|$ Hungarian assignment.
 \end{itemize}
 
 % ===========================================================================
@@ -507,7 +513,7 @@ demonstrable value beyond expression at $n=71$. These rigorous numbers
 \emph{replace} the earlier pragmatic (all-donor-factor) numbers, which were
 mildly leak-inflated.
 
-\subsection{Step 4 — interpretation and the directed hypothesis test}
+\subsection{Phase D (Step~4) --- interpretation and the directed hypothesis test}
 
 We probe \factorfour\ from three angles with SHAP~\cite{shap} (signed log-odds
 contributions; colour\,$=$\,feature value, red high / blue low).
@@ -615,7 +621,7 @@ compete against a baseline deliberately favourable to the hypothesis and still
 add nothing.
 
 % ===========================================================================
-\section{Limitations}
+\subsection{Limitations}
 % ===========================================================================
 
 \begin{itemize}
@@ -655,21 +661,85 @@ shared axis is visible and real, but it is a low-rank shadow of microglial
 transcriptional state rather than an independent, value-adding signal.
 
 % ===========================================================================
-\section*{Reproducibility}
+\section*{Data and code availability}
 % ===========================================================================
-\addcontentsline{toc}{section}{Reproducibility}
-Code lives in git (\code{src/}, \code{notebooks/}); data and checkpoints live on
-Google Drive (gitignored). Key modules: \code{src/functions.py} (Phase A/B),
-\code{src/tensor\_features.py} (in-fold projector), \code{src/rncv.py} (repeated
-nested CV), \code{src/feature\_selection.py} (\code{VarianceTopK},
-\code{MRMRSelector}), \code{src/estimators.py}, \code{src/shap\_step4.py}
-(Step~4), and the local runner \code{run\_rigorous\_local.py}. Rigorous run:
-seed~42, 3$\times$5$\times$3 nested CV, 20 Optuna trials, per-fold tensor refit;
-LIANA~1.7.3 / cell2cell~0.8.4 for Phase~B.
+
+\paragraph{Data.} All data are public. The dlPFC snRNA-seq count matrices and
+metadata were obtained from the Gene Expression Omnibus under accessions
+\textbf{GSE213982} (female cohort; the released combined counts matrix also
+contains the male nuclei) and \textbf{GSE144136} (male cohort metadata),
+published by Maitra \textit{et al.}~\cite{maitra2023}. No new data were
+generated by this project.
+
+\paragraph{Code.} All analysis code is openly available at\\
+\url{https://github.com/GiorgosBoulogeorgos/MLCB_team_project}\\
+organised as \code{src/} (library modules), \code{notebooks/} (phase-by-phase
+runners) and \code{report/} (this manuscript and its figures). Key modules:
+\code{src/functions.py} (Phases~A/B), \code{src/pseudobulk.py} (donor-level
+pseudobulk), \code{src/tensor\_features.py} (in-fold tensor projector),
+\code{src/rncv.py} (repeated nested cross-validation),
+\code{src/feature\_selection.py} (\code{VarianceTopK}, \code{MRMRSelector}),
+\code{src/estimators.py} (the five classifiers and their Optuna search spaces)
+and \code{src/shap\_step4.py} (Phase~D interpretability); the end-to-end
+rigorous run is reproduced by \code{run\_rigorous\_local.py}. Raw data and
+intermediate checkpoints are not committed (they exceed repository limits) and
+are regenerated from GEO by the Phase~A notebook.
+
+\paragraph{Reproducibility settings.} Rigorous run: seed~42,
+3$\times$5$\times$3 repeated nested CV, 20 Optuna trials per inner search,
+per-fold tensor refit; LIANA~1.7.3 / cell2cell~0.8.4 for Phase~B. Each expensive
+step is checkpointed, so a runtime timeout never costs more than one step.
+
+% ===========================================================================
+\section*{Author contributions}
+% ===========================================================================
+
+\textbf{G.B.} conceived the study: he wrote the original project proposal,
+formulated the microglia\,$\rightarrow$\,neuron shared-axis hypothesis and
+designed the proposed pipeline, which was then discussed and refined jointly
+with A.M. \textbf{A.M.} carried out Phase~A (data loading, annotation, QC and
+the reproduction of the cell-type signal). \textbf{G.B.} carried out Phase~B
+(per-donor LIANA inference, tensor construction and the non-negative CP
+decomposition) and Phase~C (pseudobulk feature construction, the three feature
+sets, the leakage-controlled repeated nested cross-validation and the
+in-fold tensor projector), and contributed to Phase~D. \textbf{A.M.} completed
+Phase~D (SHAP-based interpretation of the models and of \factorfour, and the
+directed hypothesis test), led the interpretation of the results and prepared
+the presentation slides. \textbf{Both authors} wrote the manuscript jointly,
+discussed the methodology throughout, reviewed the analyses, and read and
+approved the final version.
+
+% ===========================================================================
+\section*{AI usage disclosure}
+% ===========================================================================
+
+In line with good scientific practice, we disclose that generative AI
+(\textbf{Anthropic's Claude}) was used as a coding and writing assistant during
+this project. Specifically, it was used to (i)~produce the \emph{initial
+scaffold} of the analysis pipeline (module and notebook skeletons, function
+signatures, boilerplate); (ii)~\emph{debug code}, most substantially in the
+Phase~B LIANA / tensor-decomposition stage (e.g.\ diagnosing the missing
+$-\log_{10}$ transform of the \code{magnitude\_rank} score, which had inverted
+the in-fold factors); (iii)~\emph{generate figures} (the plotting code for the
+SHAP beeswarms, the reconstruction-error curve and the pipeline diagram); and
+(iv)~perform \emph{code review} of the analysis modules.
+
+No AI system was used to generate data, to fabricate or alter results, or to
+decide the scientific conclusions. The study design, hypothesis, methodological
+choices, evaluation protocol, interpretation of the results and the claims made
+in this manuscript are the authors' own. All AI-assisted code was read, tested
+and validated by the authors, and all AI-assisted text was reviewed and edited
+by them. The authors take full responsibility for the entire content of this
+work.
+
+% ===========================================================================
+\section*{Competing interests}
+% ===========================================================================
+
+The authors declare no competing interests.
 
 % ===========================================================================
 \begin{thebibliography}{99}
-\addcontentsline{toc}{section}{References}
 
 \bibitem{maitra2023}
 M.~Maitra \textit{et al.},
